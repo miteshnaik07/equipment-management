@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
     <title>Equipment Management System</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -17,8 +18,8 @@
 </nav>
 
 <section>
-    <h2>Inventory</h2>
-    <button onclick="loadInventory()">Load Inventory</button>
+    <h2>Current Inventory</h2>
+    <button onclick="loadInventory()">Refresh Inventory</button>
 
     <div id="inventory" class="inventory-list"></div>
 </section>
@@ -28,17 +29,24 @@ function loadInventory() {
     fetch("http://localhost:8080/api/equipment/inventory")
         .then(res => res.json())
         .then(data => {
-            let html = "<ul>";
+            let html = "<table><thead><tr><th>ID</th><th>Equipment Name</th><th>Available Quantity</th></tr></thead><tbody>";
             data.forEach(item => {
-                html += `<li><strong>${item.name}</strong> — Quantity: ${item.quantity}</li>`;
+                html += `<tr>
+                    <td>${item.id}</td>
+                    <td><strong>${item.name}</strong></td>
+                    <td>${item.quantity}</td>
+                </tr>`;
             });
-            html += "</ul>";
+            html += "</tbody></table>";
             document.getElementById("inventory").innerHTML = html;
         })
         .catch(err => {
             document.getElementById("inventory").innerHTML = "Error loading inventory.";
         });
 }
+
+// Load inventory automatically when page loads
+window.onload = loadInventory;
 </script>
 
 </body>

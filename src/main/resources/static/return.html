@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Return Equipment</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+    <h1>Return Equipment</h1>
+</header>
+
+<nav>
+    <a href="index.html">Home</a>
+    <a href="issue.html">Issue Equipment</a>
+    <a href="return.html">Return Equipment</a>
+</nav>
+
+<section>
+    <form onsubmit="returnItem(event)" class="form-box">
+        <label>Select Equipment:</label>
+        <select id="equipmentSelect" required>
+            <option value="">-- Select Equipment --</option>
+        </select>
+
+        <label>Quantity to Return:</label>
+        <input type="number" id="quantity" min="1" required placeholder="Enter quantity">
+
+        <label>User Name:</label>
+        <input type="text" id="user" required placeholder="Enter your name">
+
+        <button type="submit">Return Equipment</button>
+    </form>
+
+    <p id="msg" class="message"></p>
+</section>
+
+<script>
+// Load equipment into dropdown
+function loadEquipment() {
+    fetch("http://localhost:8080/api/equipment/inventory")
+        .then(res => res.json())
+        .then(data => {
+            let select = document.getElementById("equipmentSelect");
+            data.forEach(item => {
+                let option = document.createElement("option");
+                option.value = item.id;
+                option.text = item.name;
+                select.appendChild(option);
+            });
+        })
+        .catch(err => {
+            document.getElementById("msg").innerText = "Error loading equipment list.";
+        });
+}
+
+function returnItem(e) {
+    e.preventDefault();
+
+    let id = document.getElementById("equipmentSelect").value;
+    let quantity = document.getElementById("quantity").value;
+    let user = document.getElementById("user").value;
+
+    // Return multiple items
+    let promises = [];
+    for (let i = 0; i < quantity; i++) {
+        promises.push(
+            fetch(`http://localhost:8080/api/equipment/return?id=${id}&user=${user}`, {
+                method: "POST"
+            }).then(res => res.text())
+        );
+    }
+
+    Promise.all(promises)
+        .then(() => {
+            document.getElementById("msg").innerText = `Successfully returned ${quantity} unit(s)!`;
+            document.getElementById("msg").style.color = "green";
+            
+            // Reset form
+            document.getElementById("equipmentSelect").value = "";
+            document.getElementById("quantity").value = "";
+            document.getElementById("user").value = "";
+            
+            // Reload equipment list
+            document.getElementById("equipmentSelect").innerHTML = '<option value="">-- Select Equipment --</option>';
+            loadEquipment();
+        })
+        .catch(err => {
+            document.getElementById("msg").innerText = "Error returning item.";
+            document.getElementById("msg").style.color = "red";
+        });
+}
+
+// Load equipment when page loads
+window.onload = loadEquipment;
+</script>
+
+</body>
+</html>
