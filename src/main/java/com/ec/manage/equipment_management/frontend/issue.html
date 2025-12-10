@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Issue Equipment</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+    <h1>Issue Equipment</h1>
+</header>
+
+<nav>
+    <a href="index.html">Home</a>
+    <a href="issue.html">Issue Equipment</a>
+    <a href="return.html">Return Equipment</a>
+</nav>
+
+<section>
+    <form onsubmit="issue(event)" class="form-box">
+        <label>Equipment ID:</label>
+        <input type="number" id="id" required>
+
+        <label>User Name:</label>
+        <input type="text" id="user" required>
+
+        <button type="submit">Issue</button>
+    </form>
+
+    <p id="msg" class="message"></p>
+</section>
+
+<script>
+function issue(e) {
+    e.preventDefault();
+
+    let id = document.getElementById("id").value;
+    let user = document.getElementById("user").value;
+
+    fetch(`http://localhost:8080/api/equipment/issue?id=${id}&user=${user}`, {
+        method: "POST"
+    })
+    .then(res => res.text())
+    .then(msg => document.getElementById("msg").innerText = msg)
+    .catch(err => document.getElementById("msg").innerText = "Error issuing item.");
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Equipment Management System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+    <h1>Equipment / Component Issue & Return Management</h1>
+</header>
+
+<nav>
+    <a href="index.html">Home</a>
+    <a href="issue.html">Issue Equipment</a>
+    <a href="return.html">Return Equipment</a>
+</nav>
+
+<section>
+    <h2>Inventory</h2>
+    <button onclick="loadInventory()">Load Inventory</button>
+
+    <div id="inventory" class="inventory-list"></div>
+</section>
+
+<script>
+function loadInventory() {
+    fetch("http://localhost:8080/api/equipment/inventory")
+        .then(res => res.json())
+        .then(data => {
+            let html = "<ul>";
+            data.forEach(item => {
+                html += `<li><strong>${item.name}</strong> — Quantity: ${item.quantity}</li>`;
+            });
+            html += "</ul>";
+            document.getElementById("inventory").innerHTML = html;
+        })
+        .catch(err => {
+            document.getElementById("inventory").innerHTML = "Error loading inventory.";
+        });
+}
+</script>
+
+</body>
+</html>
