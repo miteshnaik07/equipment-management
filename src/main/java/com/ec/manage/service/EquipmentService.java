@@ -23,16 +23,14 @@ public class EquipmentService {
         this.issuedEquipmentRepository = issuedEquipmentRepository;
     }
 
-    // Initialize equipment data (call this once to populate database)
+    // Initialize equipment data with updated quantities
     public void initializeEquipment() {
         if (equipmentRepository.count() == 0) {
-            equipmentRepository.save(new Equipment("Oscilloscope", 5));
-            equipmentRepository.save(new Equipment("Multimeter", 10));
-            equipmentRepository.save(new Equipment("Soldering Iron", 7));
-            equipmentRepository.save(new Equipment("Microcontroller", 15));
-            equipmentRepository.save(new Equipment("Sensors", 20));
-            equipmentRepository.save(new Equipment("Line Follower Kit", 8));
-            equipmentRepository.save(new Equipment("Soldering Equipment", 12));
+            equipmentRepository.save(new Equipment("Microcontroller", 10));
+            equipmentRepository.save(new Equipment("Sensors", 22));
+            equipmentRepository.save(new Equipment("Line Follower Kit", 12));
+            equipmentRepository.save(new Equipment("Multimeter", 8));
+            equipmentRepository.save(new Equipment("Soldering Equipment", 30));
         }
     }
 
