@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Login - Equipment Management</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: calc(100vh - 200px);
+            padding: 20px;
+        }
+
+        .login-box {
+            background: white;
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .login-box h2 {
+            text-align: center;
+            color: #005bbb;
+            margin-bottom: 30px;
+        }
+
+        .login-box .logo {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .login-box .logo img {
+            width: 80px;
+            height: 80px;
+        }
+
+        .login-box .icon {
+            font-size: 60px;
+            color: #005bbb;
+        }
+
+        .tab-buttons {
+            display: flex;
+            margin-bottom: 30px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 12px;
+            background: #f0f0f0;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .tab-button.active {
+            background: #005bbb;
+            color: white;
+        }
+
+        .tab-button:hover:not(.active) {
+            background: #e0e0e0;
+        }
+
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .success-message {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .register-link {
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+        }
+
+        .register-link a {
+            color: #005bbb;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .register-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Equipment Management System</h1>
+</header>
+
+<div class="login-container">
+    <div class="login-box">
+        <div class="logo">
+            <div class="icon">🔐</div>
+        </div>
+        <h2>Login</h2>
+
+        <div class="tab-buttons">
+            <button class="tab-button active" onclick="switchTab('student')">Student</button>
+            <button class="tab-button" onclick="switchTab('admin')">Admin</button>
+        </div>
+
+        <div id="errorMsg" class="error-message"></div>
+        <div id="successMsg" class="success-message"></div>
+
+        <form onsubmit="handleLogin(event)">
+            <label>User ID:</label>
+            <input type="text" id="userId" required placeholder="Enter your User ID">
+
+            <label>Password:</label>
+            <input type="password" id="password" required placeholder="Enter your password">
+
+            <button type="submit" style="margin-top: 10px;">Login</button>
+        </form>
+
+        <div class="register-link">
+            Don't have an account? <a href="register.html">Register as Student</a>
+        </div>
+
+        <div class="register-link" style="margin-top: 10px; font-size: 12px; color: #999;">
+            Demo: Student (STU001/student123) | Admin (ADM001/admin123)
+        </div>
+    </div>
+</div>
+
+<script>
+let currentRole = 'student';
+
+function switchTab(role) {
+    currentRole = role;
+    document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    // Clear messages
+    document.getElementById('errorMsg').style.display = 'none';
+    document.getElementById('successMsg').style.display = 'none';
+}
+
+function handleLogin(e) {
+    e.preventDefault();
+
+    let userId = document.getElementById('userId').value.trim();
+    let password = document.getElementById('password').value;
+
+    fetch("http://localhost:8080/api/users/login", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            userId: userId,
+            password: password
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            // Store user data in sessionStorage
+            sessionStorage.setItem('user', JSON.stringify(data.user));
+            
+            // Check if role matches selected tab
+            if (data.user.role === 'ADMIN' && currentRole === 'admin') {
+                window.location.href = 'admin-portal.html';
+            } else if (data.user.role === 'STUDENT' && currentRole === 'student') {
+                window.location.href = 'student-portal.html';
+            } else {
+                showError('Please select the correct login type for your role.');
+            }
+        } else {
+            showError(data.message);
+        }
+    })
+    .catch(err => {
+        showError('Error connecting to server. Please try again.');
+    });
+}
+
+function showError(message) {
+    let errorMsg = document.getElementById('errorMsg');
+    errorMsg.textContent = message;
+    errorMsg.style.display = 'block';
+    document.getElementById('successMsg').style.display = 'none';
+}
+
+function showSuccess(message) {
+    let successMsg = document.getElementById('successMsg');
+    successMsg.textContent = message;
+    successMsg.style.display = 'block';
+    document.getElementById('errorMsg').style.display = 'none';
+}
+
+// Initialize users on page load
+window.onload = function() {
+    fetch("http://localhost:8080/api/users/initialize", {
+        method: "POST"
+    }).catch(err => console.log('Users already initialized'));
+    
+    // Initialize equipment data too
+    fetch("http://localhost:8080/api/equipment/initialize", {
+        method: "POST"
+    }).catch(err => console.log('Equipment already initialized'));
+};
+</script>
+
+</body>
+</html>

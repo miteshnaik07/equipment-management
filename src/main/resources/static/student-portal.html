@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Student Portal - Equipment Management</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .user-info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px auto;
+            max-width: 1200px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .user-details h3 {
+            margin: 0 0 5px 0;
+            font-size: 24px;
+        }
+
+        .user-details p {
+            margin: 0;
+            opacity: 0.9;
+        }
+
+        .logout-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid white;
+            padding: 10px 20px;
+            color: white;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .dashboard-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 30px auto;
+        }
+
+        .dashboard-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .dashboard-card h3 {
+            color: #005bbb;
+            margin-bottom: 15px;
+        }
+
+        .dashboard-card .number {
+            font-size: 48px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            max-width: 1200px;
+            margin: 20px auto;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 15px;
+            font-size: 18px;
+            border-radius: 8px;
+        }
+
+        .my-equipment-section {
+            max-width: 1200px;
+            margin: 30px auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Student Portal</h1>
+</header>
+
+<div class="user-info">
+    <div class="user-details">
+        <h3 id="userName">Welcome, Student</h3>
+        <p>User ID: <span id="userId"></span></p>
+        <p>Department: <span id="userDept"></span></p>
+    </div>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+</div>
+
+<section>
+    <div class="dashboard-cards">
+        <div class="dashboard-card">
+            <h3>Total Items Issued</h3>
+            <div class="number" id="totalIssued">0</div>
+        </div>
+        <div class="dashboard-card">
+            <h3>Total Quantity</h3>
+            <div class="number" id="totalQuantity">0</div>
+        </div>
+        <div class="dashboard-card">
+            <h3>Items to Return</h3>
+            <div class="number" id="toReturn">0</div>
+        </div>
+    </div>
+
+    <div class="action-buttons">
+        <button class="action-btn" onclick="showIssueModal()" style="background: #28a745;">Issue Equipment</button>
+        <button class="action-btn" onclick="showReturnModal()" style="background: #ff9800;">Return Equipment</button>
+    </div>
+
+    <div class="my-equipment-section">
+        <h2>My Issued Equipment</h2>
+        <div id="myEquipment"></div>
+    </div>
+</section>
+
+<!-- Issue Modal -->
+<div id="issueModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+    <div style="background: white; max-width: 500px; margin: 50px auto; padding: 30px; border-radius: 10px;">
+        <h2>Issue Equipment</h2>
+        <form onsubmit="issueEquipment(event)">
+            <label>Select Equipment:</label>
+            <select id="issueEquipmentSelect" required>
+                <option value="">-- Select Equipment --</option>
+            </select>
+
+            <label>Quantity:</label>
+            <input type="number" id="issueQuantity" min="1" required>
+            <small id="issueAvailableQty" style="color: #666;"></small>
+
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="submit" style="flex: 1;">Issue</button>
+                <button type="button" onclick="closeIssueModal()" style="flex: 1; background: #999;">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Return Modal -->
+<div id="returnModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+    <div style="background: white; max-width: 500px; margin: 50px auto; padding: 30px; border-radius: 10px;">
+        <h2>Return Equipment</h2>
+        <form onsubmit="returnEquipment(event)">
+            <label>Select Equipment:</label>
+            <select id="returnEquipmentSelect" required onchange="updateReturnMax()">
+                <option value="">-- Select Equipment --</option>
+            </select>
+
+            <label>Quantity to Return:</label>
+            <input type="number" id="returnQuantity" min="1" required>
+            <small id="returnAvailableQty" style="color: #666;"></small>
+
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="submit" style="flex: 1;">Return</button>
+                <button type="button" onclick="closeReturnModal()" style="flex: 1; background: #999;">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+let currentUser = null;
+let equipmentData = [];
+let myIssuedEquipment = [];
+
+// Check authentication
+window.onload = function() {
+    let userStr = sessionStorage.getItem('user');
+    if (!userStr) {
+        window.location.href = 'login.html';
+        return;
+    }
+    
+    currentUser = JSON.parse(userStr);
+    
+    if (currentUser.role !== 'STUDENT') {
+        alert('Access denied. Students only.');
+        window.location.href = 'login.html';
+        return;
+    }
+    
+    document.getElementById('userName').textContent = 'Welcome, ' + currentUser.name;
+    document.getElementById('userId').textContent = currentUser.userId;
+    document.getElementById('userDept').textContent = currentUser.department;
+    
+    loadDashboard();
+    startAutoRefresh();
+};
+
+function loadDashboard() {
+    loadMyEquipment();
+    loadEquipmentList();
+}
+
+function loadMyEquipment() {
+    fetch(`http://localhost:8080/api/equipment/issued/${currentUser.userId}`)
+        .then(res => res.json())
+        .then(data => {
+            myIssuedEquipment = data.filter(item => 
+                item.status === 'ISSUED' || item.status === 'PARTIALLY_RETURNED'
+            );
+            
+            displayMyEquipment(myIssuedEquipment);
+            updateDashboardStats(myIssuedEquipment);
+        })
+        .catch(err => console.error('Error loading equipment:', err));
+}
+
+function displayMyEquipment(items) {
+    let html = '';
+    
+    if (items.length === 0) {
+        html = '<p style="text-align: center; color: #999;">No equipment currently issued</p>';
+    } else {
+        html = `<table>
+            <thead>
+                <tr>
+                    <th>Equipment Name</th>
+                    <th>Quantity Issued</th>
+                    <th>Quantity Returned</th>
+                    <th>Remaining</th>
+                    <th>Issued Date</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>`;
+        
+        items.forEach(item => {
+            let remaining = item.quantityIssued - item.quantityReturned;
+            let statusColor = item.status === 'ISSUED' ? '#ff6b6b' : '#ff9800';
+            html += `<tr>
+                <td><strong>${item.equipmentName}</strong></td>
+                <td>${item.quantityIssued}</td>
+                <td>${item.quantityReturned}</td>
+                <td><strong style="color: ${statusColor};">${remaining}</strong></td>
+                <td>${new Date(item.issuedDate).toLocaleString()}</td>
+                <td><span style="color: ${statusColor};">${item.status}</span></td>
+            </tr>`;
+        });
+        
+        html += '</tbody></table>';
+    }
+    
+    document.getElementById('myEquipment').innerHTML = html;
+}
+
+function updateDashboardStats(items) {
+    let totalItems = items.length;
+    let totalQuantity = items.reduce((sum, item) => sum + (item.quantityIssued - item.quantityReturned), 0);
+    
+    document.getElementById('totalIssued').textContent = totalItems;
+    document.getElementById('totalQuantity').textContent = totalQuantity;
+    document.getElementById('toReturn').textContent = totalQuantity;
+}
+
+function loadEquipmentList() {
+    fetch("http://localhost:8080/api/equipment/inventory")
+        .then(res => res.json())
+        .then(data => {
+            equipmentData = data;
+            populateIssueSelect(data);
+            populateReturnSelect();
+        })
+        .catch(err => console.error('Error:', err));
+}
+
+function populateIssueSelect(data) {
+    let select = document.getElementById('issueEquipmentSelect');
+    select.innerHTML = '<option value="">-- Select Equipment --</option>';
+    
+    data.forEach(item => {
+        let option = document.createElement('option');
+        option.value = item.id;
+        option.text = `${item.name} (Available: ${item.availableQuantity})`;
+        option.disabled = item.availableQuantity === 0;
+        select.appendChild(option);
+    });
+}
+
+function populateReturnSelect() {
+    let select = document.getElementById('returnEquipmentSelect');
+    select.innerHTML = '<option value="">-- Select Equipment --</option>';
+    
+    myIssuedEquipment.forEach(item => {
+        let remaining = item.quantityIssued - item.quantityReturned;
+        if (remaining > 0) {
+            let option = document.createElement('option');
+            option.value = item.equipmentId;
+            option.text = `${item.equipmentName} (To return: ${remaining})`;
+            option.dataset.remaining = remaining;
+            select.appendChild(option);
+        }
+    });
+}
+
+function showIssueModal() {
+    document.getElementById('issueModal').style.display = 'block';
+    document.getElementById('issueEquipmentSelect').onchange = function() {
+        let selectedId = this.value;
+        if (selectedId) {
+            let equipment = equipmentData.find(item => item.id === selectedId);
+            document.getElementById('issueQuantity').max = equipment.availableQuantity;
+            document.getElementById('issueAvailableQty').textContent = `Available: ${equipment.availableQuantity} units`;
+        }
+    };
+}
+
+function closeIssueModal() {
+    document.getElementById('issueModal').style.display = 'none';
+}
+
+function showReturnModal() {
+    populateReturnSelect();
+    document.getElementById('returnModal').style.display = 'block';
+}
+
+function closeReturnModal() {
+    document.getElementById('returnModal').style.display = 'none';
+}
+
+function updateReturnMax() {
+    let select = document.getElementById('returnEquipmentSelect');
+    let selectedOption = select.options[select.selectedIndex];
+    
+    if (selectedOption.dataset.remaining) {
+        let remaining = parseInt(selectedOption.dataset.remaining);
+        document.getElementById('returnQuantity').max = remaining;
+        document.getElementById('returnAvailableQty').textContent = `You have ${remaining} unit(s) to return`;
+    }
+}
+
+function issueEquipment(e) {
+    e.preventDefault();
+    
+    let equipmentId = document.getElementById('issueEquipmentSelect').value;
+    let quantity = parseInt(document.getElementById('issueQuantity').value);
+    
+    fetch("http://localhost:8080/api/equipment/issue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            equipmentId: equipmentId,
+            quantity: quantity,
+            userId: currentUser.userId,
+            userName: currentUser.name
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        if (data.message.includes('Successfully')) {
+            closeIssueModal();
+            loadDashboard();
+        }
+    })
+    .catch(err => alert('Error issuing equipment'));
+}
+
+function returnEquipment(e) {
+    e.preventDefault();
+    
+    let equipmentId = document.getElementById('returnEquipmentSelect').value;
+    let quantity = parseInt(document.getElementById('returnQuantity').value);
+    
+    fetch("http://localhost:8080/api/equipment/return", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            equipmentId: equipmentId,
+            quantity: quantity,
+            userId: currentUser.userId,
+            userName: currentUser.name
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        if (data.message.includes('Successfully')) {
+            closeReturnModal();
+            loadDashboard();
+        }
+    })
+    .catch(err => alert('Error returning equipment'));
+}
+
+function logout() {
+    sessionStorage.removeItem('user');
+    window.location.href = 'login.html';
+}
+
+function startAutoRefresh() {
+    setInterval(loadDashboard, 10000); // Refresh every 10 seconds
+}
+</script>
+
+</body>
+</html>

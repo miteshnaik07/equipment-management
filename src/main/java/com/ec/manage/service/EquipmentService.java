@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -132,5 +133,20 @@ public class EquipmentService {
 
     public List<IssuedEquipment> getAllIssuedEquipment() {
         return issuedEquipmentRepository.findAll();
+    }
+
+    // ⭐ Get all active issued equipment (for admin dashboard)
+    public List<IssuedEquipment> getActiveIssuedEquipment() {
+        List<IssuedEquipment> activeEquipment = new ArrayList<>();
+        
+        // Get equipment with ISSUED status
+        List<IssuedEquipment> issued = issuedEquipmentRepository.findByStatus("ISSUED");
+        activeEquipment.addAll(issued);
+        
+        // Get equipment with PARTIALLY_RETURNED status
+        List<IssuedEquipment> partial = issuedEquipmentRepository.findByStatus("PARTIALLY_RETURNED");
+        activeEquipment.addAll(partial);
+        
+        return activeEquipment;
     }
 }

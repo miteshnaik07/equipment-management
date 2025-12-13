@@ -61,4 +61,10 @@ public class EquipmentController {
     public List<IssuedEquipment> getAllIssuedEquipment() {
         return service.getAllIssuedEquipment();
     }
+
+    // ⭐ NEW ENDPOINT - Get active issued equipment (ISSUED or PARTIALLY_RETURNED)
+    @GetMapping("/issued/active")
+    public List<IssuedEquipment> getActiveIssuedEquipment() {
+        return service.getActiveIssuedEquipment();
+    }
 }
