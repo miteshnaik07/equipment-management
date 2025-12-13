@@ -19,33 +19,55 @@
 
 <section>
     <h2>Current Inventory</h2>
+    <button onclick="initializeData()" style="background: #28a745; margin-right: 10px;">Initialize Equipment Data</button>
     <button onclick="loadInventory()">Refresh Inventory</button>
 
     <div id="inventory" class="inventory-list"></div>
 </section>
 
 <script>
+function initializeData() {
+    fetch("http://localhost:8080/api/equipment/initialize", {
+        method: "POST"
+    })
+    .then(res => res.text())
+    .then(data => {
+        alert(data);
+        loadInventory();
+    })
+    .catch(err => {
+        alert("Error initializing data. Make sure MongoDB is running!");
+    });
+}
+
 function loadInventory() {
     fetch("http://localhost:8080/api/equipment/inventory")
         .then(res => res.json())
         .then(data => {
-            let html = "<table><thead><tr><th>ID</th><th>Equipment Name</th><th>Available Quantity</th></tr></thead><tbody>";
+            let html = "<table><thead><tr><th>Equipment Name</th><th>Available</th><th>Total</th><th>Status</th></tr></thead><tbody>";
             data.forEach(item => {
+                let status = item.availableQuantity === 0 ? 
+                    '<span style="color: red;">Out of Stock</span>' : 
+                    item.availableQuantity < item.totalQuantity * 0.3 ? 
+                    '<span style="color: orange;">Low Stock</span>' : 
+                    '<span style="color: green;">Available</span>';
+                
                 html += `<tr>
-                    <td>${item.id}</td>
                     <td><strong>${item.name}</strong></td>
-                    <td>${item.quantity}</td>
+                    <td>${item.availableQuantity}</td>
+                    <td>${item.totalQuantity}</td>
+                    <td>${status}</td>
                 </tr>`;
             });
             html += "</tbody></table>";
             document.getElementById("inventory").innerHTML = html;
         })
         .catch(err => {
-            document.getElementById("inventory").innerHTML = "Error loading inventory.";
+            document.getElementById("inventory").innerHTML = 
+                "<p style='color: red;'>Error loading inventory. Make sure the server and MongoDB are running!</p>";
         });
 }
 
-// Load inventory automatically when page loads
 window.onload = loadInventory;
 </script>
 

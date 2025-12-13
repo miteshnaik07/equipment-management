@@ -19,6 +19,12 @@
 
 <section>
     <form onsubmit="issue(event)" class="form-box">
+        <label>User ID:</label>
+        <input type="text" id="userId" required placeholder="Enter your user ID (e.g., USR001)">
+
+        <label>User Name:</label>
+        <input type="text" id="userName" required placeholder="Enter your name">
+
         <label>Select Equipment:</label>
         <select id="equipmentSelect" required onchange="updateMaxQuantity()">
             <option value="">-- Select Equipment --</option>
@@ -27,9 +33,6 @@
         <label>Quantity to Issue:</label>
         <input type="number" id="quantity" min="1" required placeholder="Enter quantity">
         <small id="availableQty" style="color: #666; display: block; margin-top: -15px; margin-bottom: 15px;"></small>
-
-        <label>User Name:</label>
-        <input type="text" id="user" required placeholder="Enter your name">
 
         <button type="submit">Issue Equipment</button>
     </form>
@@ -40,7 +43,6 @@
 <script>
 let equipmentData = [];
 
-// Load available equipment into dropdown
 function loadEquipment() {
     fetch("http://localhost:8080/api/equipment/inventory")
         .then(res => res.json())
@@ -50,16 +52,17 @@ function loadEquipment() {
             data.forEach(item => {
                 let option = document.createElement("option");
                 option.value = item.id;
-                option.text = item.name;
-                option.disabled = item.quantity === 0;
-                if (item.quantity === 0) {
-                    option.text += " (Out of Stock)";
+                option.text = `${item.name} (Available: ${item.availableQuantity}/${item.totalQuantity})`;
+                option.disabled = item.availableQuantity === 0;
+                if (item.availableQuantity === 0) {
+                    option.text += " - Out of Stock";
                 }
                 select.appendChild(option);
             });
         })
         .catch(err => {
             document.getElementById("msg").innerText = "Error loading equipment list.";
+            document.getElementById("msg").style.color = "red";
         });
 }
 
@@ -69,10 +72,10 @@ function updateMaxQuantity() {
     let availableQtyText = document.getElementById("availableQty");
     
     if (selectedId) {
-        let equipment = equipmentData.find(item => item.id == selectedId);
+        let equipment = equipmentData.find(item => item.id === selectedId);
         if (equipment) {
-            quantityInput.max = equipment.quantity;
-            availableQtyText.textContent = `Available: ${equipment.quantity}`;
+            quantityInput.max = equipment.availableQuantity;
+            availableQtyText.textContent = `Available: ${equipment.availableQuantity} units`;
         }
     } else {
         quantityInput.max = "";
@@ -83,50 +86,52 @@ function updateMaxQuantity() {
 function issue(e) {
     e.preventDefault();
 
-    let id = document.getElementById("equipmentSelect").value;
-    let quantity = document.getElementById("quantity").value;
-    let user = document.getElementById("user").value;
+    let equipmentId = document.getElementById("equipmentSelect").value;
+    let quantity = parseInt(document.getElementById("quantity").value);
+    let userId = document.getElementById("userId").value.trim();
+    let userName = document.getElementById("userName").value.trim();
 
-    // Validate quantity
-    let equipment = equipmentData.find(item => item.id == id);
-    if (quantity > equipment.quantity) {
-        document.getElementById("msg").innerText = `Error: Only ${equipment.quantity} units available!`;
+    let equipment = equipmentData.find(item => item.id === equipmentId);
+    if (quantity > equipment.availableQuantity) {
+        document.getElementById("msg").innerText = `Error: Only ${equipment.availableQuantity} units available!`;
         document.getElementById("msg").style.color = "red";
         return;
     }
 
-    // Issue multiple items
-    let promises = [];
-    for (let i = 0; i < quantity; i++) {
-        promises.push(
-            fetch(`http://localhost:8080/api/equipment/issue?id=${id}&user=${user}`, {
-                method: "POST"
-            }).then(res => res.text())
-        );
-    }
-
-    Promise.all(promises)
-        .then(() => {
-            document.getElementById("msg").innerText = `Successfully issued ${quantity} unit(s)!`;
-            document.getElementById("msg").style.color = "green";
-            
-            // Reset form
+    fetch("http://localhost:8080/api/equipment/issue", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            equipmentId: equipmentId,
+            quantity: quantity,
+            userId: userId,
+            userName: userName
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        document.getElementById("msg").innerText = data.message;
+        document.getElementById("msg").style.color = data.message.includes("Successfully") ? "green" : "red";
+        
+        if (data.message.includes("Successfully")) {
             document.getElementById("equipmentSelect").value = "";
             document.getElementById("quantity").value = "";
-            document.getElementById("user").value = "";
+            document.getElementById("userId").value = "";
+            document.getElementById("userName").value = "";
             document.getElementById("availableQty").textContent = "";
             
-            // Reload equipment list
             document.getElementById("equipmentSelect").innerHTML = '<option value="">-- Select Equipment --</option>';
             loadEquipment();
-        })
-        .catch(err => {
-            document.getElementById("msg").innerText = "Error issuing item.";
-            document.getElementById("msg").style.color = "red";
-        });
+        }
+    })
+    .catch(err => {
+        document.getElementById("msg").innerText = "Error issuing equipment.";
+        document.getElementById("msg").style.color = "red";
+    });
 }
 
-// Load equipment when page loads
 window.onload = loadEquipment;
 </script>
 

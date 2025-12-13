@@ -19,29 +19,41 @@
 
 <section>
     <form onsubmit="returnItem(event)" class="form-box">
+        <label>User ID:</label>
+        <input type="text" id="userId" required placeholder="Enter your user ID">
+
+        <label>User Name:</label>
+        <input type="text" id="userName" required placeholder="Enter your name">
+
         <label>Select Equipment:</label>
-        <select id="equipmentSelect" required>
+        <select id="equipmentSelect" required onchange="updateReturnInfo()">
             <option value="">-- Select Equipment --</option>
         </select>
 
         <label>Quantity to Return:</label>
         <input type="number" id="quantity" min="1" required placeholder="Enter quantity">
-
-        <label>User Name:</label>
-        <input type="text" id="user" required placeholder="Enter your name">
+        <small id="issuedQty" style="color: #666; display: block; margin-top: -15px; margin-bottom: 15px;"></small>
 
         <button type="submit">Return Equipment</button>
     </form>
 
     <p id="msg" class="message"></p>
+
+    <div class="issued-items-section" id="issuedItemsSection" style="display:none;">
+        <h3>Your Issued Equipment</h3>
+        <div id="issuedItems"></div>
+    </div>
 </section>
 
 <script>
-// Load equipment into dropdown
+let equipmentData = [];
+let issuedData = [];
+
 function loadEquipment() {
     fetch("http://localhost:8080/api/equipment/inventory")
         .then(res => res.json())
         .then(data => {
+            equipmentData = data;
             let select = document.getElementById("equipmentSelect");
             data.forEach(item => {
                 let option = document.createElement("option");
@@ -52,49 +64,152 @@ function loadEquipment() {
         })
         .catch(err => {
             document.getElementById("msg").innerText = "Error loading equipment list.";
-        });
-}
-
-function returnItem(e) {
-    e.preventDefault();
-
-    let id = document.getElementById("equipmentSelect").value;
-    let quantity = document.getElementById("quantity").value;
-    let user = document.getElementById("user").value;
-
-    // Return multiple items
-    let promises = [];
-    for (let i = 0; i < quantity; i++) {
-        promises.push(
-            fetch(`http://localhost:8080/api/equipment/return?id=${id}&user=${user}`, {
-                method: "POST"
-            }).then(res => res.text())
-        );
-    }
-
-    Promise.all(promises)
-        .then(() => {
-            document.getElementById("msg").innerText = `Successfully returned ${quantity} unit(s)!`;
-            document.getElementById("msg").style.color = "green";
-            
-            // Reset form
-            document.getElementById("equipmentSelect").value = "";
-            document.getElementById("quantity").value = "";
-            document.getElementById("user").value = "";
-            
-            // Reload equipment list
-            document.getElementById("equipmentSelect").innerHTML = '<option value="">-- Select Equipment --</option>';
-            loadEquipment();
-        })
-        .catch(err => {
-            document.getElementById("msg").innerText = "Error returning item.";
             document.getElementById("msg").style.color = "red";
         });
 }
 
-// Load equipment when page loads
+function checkUserIssuedItems() {
+    let userId = document.getElementById("userId").value.trim();
+    if (!userId) return;
+
+    fetch(`http://localhost:8080/api/equipment/issued/${userId}`)
+        .then(res => res.json())
+        .then(data => {
+            issuedData = data.filter(item => 
+                item.status === "ISSUED" || item.status === "PARTIALLY_RETURNED"
+            );
+            
+            if (issuedData.length > 0) {
+                displayIssuedItems(issuedData);
+            } else {
+                document.getElementById("issuedItemsSection").style.display = "none";
+            }
+        })
+        .catch(err => console.error("Error loading issued items:", err));
+}
+
+function displayIssuedItems(items) {
+    let html = "<table><thead><tr><th>Equipment</th><th>Issued</th><th>Returned</th><th>Remaining</th></tr></thead><tbody>";
+    
+    items.forEach(item => {
+        html += `<tr>
+            <td>${item.equipmentName}</td>
+            <td>${item.quantityIssued}</td>
+            <td>${item.quantityReturned}</td>
+            <td><strong>${item.quantityIssued - item.quantityReturned}</strong></td>
+        </tr>`;
+    });
+    
+    html += "</tbody></table>";
+    document.getElementById("issuedItems").innerHTML = html;
+    document.getElementById("issuedItemsSection").style.display = "block";
+}
+
+function updateReturnInfo() {
+    let selectedId = document.getElementById("equipmentSelect").value;
+    let userId = document.getElementById("userId").value.trim();
+    let quantityInput = document.getElementById("quantity");
+    let issuedQtyText = document.getElementById("issuedQty");
+    
+    if (selectedId && userId && issuedData.length > 0) {
+        let userIssuedItems = issuedData.filter(item => item.equipmentId === selectedId);
+        let totalRemaining = userIssuedItems.reduce((sum, item) => 
+            sum + (item.quantityIssued - item.quantityReturned), 0
+        );
+        
+        if (totalRemaining > 0) {
+            quantityInput.max = totalRemaining;
+            issuedQtyText.textContent = `You have ${totalRemaining} unit(s) to return`;
+            issuedQtyText.style.color = "#0066cc";
+        } else {
+            issuedQtyText.textContent = "No items issued for this equipment";
+            issuedQtyText.style.color = "#cc0000";
+        }
+    } else {
+        quantityInput.max = "";
+        issuedQtyText.textContent = "";
+    }
+}
+
+document.getElementById("userId").addEventListener("blur", checkUserIssuedItems);
+
+function returnItem(e) {
+    e.preventDefault();
+
+    let equipmentId = document.getElementById("equipmentSelect").value;
+    let quantity = parseInt(document.getElementById("quantity").value);
+    let userId = document.getElementById("userId").value.trim();
+    let userName = document.getElementById("userName").value.trim();
+
+    fetch("http://localhost:8080/api/equipment/return", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            equipmentId: equipmentId,
+            quantity: quantity,
+            userId: userId,
+            userName: userName
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        document.getElementById("msg").innerText = data.message;
+        document.getElementById("msg").style.color = data.message.includes("Successfully") ? "green" : "red";
+        
+        if (data.message.includes("Successfully")) {
+            document.getElementById("equipmentSelect").value = "";
+            document.getElementById("quantity").value = "";
+            document.getElementById("issuedQty").textContent = "";
+            
+            document.getElementById("equipmentSelect").innerHTML = '<option value="">-- Select Equipment --</option>';
+            loadEquipment();
+            checkUserIssuedItems();
+        }
+    })
+    .catch(err => {
+        document.getElementById("msg").innerText = "Error returning equipment.";
+        document.getElementById("msg").style.color = "red";
+    });
+}
+
 window.onload = loadEquipment;
 </script>
+
+<style>
+.issued-items-section {
+    margin-top: 40px;
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.1);
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.issued-items-section h3 {
+    color: #005bbb;
+    margin-bottom: 15px;
+}
+
+.issued-items-section table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.issued-items-section th,
+.issued-items-section td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.issued-items-section thead {
+    background: #f5f5f5;
+}
+</style>
 
 </body>
 </html>

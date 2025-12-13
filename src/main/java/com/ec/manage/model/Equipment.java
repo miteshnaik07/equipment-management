@@ -1,21 +1,30 @@
 package com.ec.manage.model;
 
-public class Equipment {
-    private int id;
-    private String name;
-    private int quantity;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-    public Equipment(int id, String name, int quantity) {
-        this.id = id;
+@Document(collection = "equipment")
+public class Equipment {
+    @Id
+    private String id;
+    private String name;
+    private int totalQuantity;  // Fixed total quantity
+    private int availableQuantity;  // Current available quantity
+
+    public Equipment() {}
+
+    public Equipment(String name, int totalQuantity) {
         this.name = name;
-        this.quantity = quantity;
+        this.totalQuantity = totalQuantity;
+        this.availableQuantity = totalQuantity;
     }
 
-    public int getId() {
+    // Getters and Setters
+    public String getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(String id) {
         this.id = id;
     }
 
@@ -27,11 +36,19 @@ public class Equipment {
         this.name = name;
     }
 
-    public int getQuantity() {
-        return quantity;
+    public int getTotalQuantity() {
+        return totalQuantity;
     }
 
-    public void setQuantity(int quantity) {
-        this.quantity = quantity;
+    public void setTotalQuantity(int totalQuantity) {
+        this.totalQuantity = totalQuantity;
+    }
+
+    public int getAvailableQuantity() {
+        return availableQuantity;
+    }
+
+    public void setAvailableQuantity(int availableQuantity) {
+        this.availableQuantity = availableQuantity;
     }
 }
